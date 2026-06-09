@@ -1,22 +1,16 @@
-var builder = WebApplication.CreateBuilder(args);
+using SmarterMeterUI.Services;
 
-// Add services to the container.
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
 builder.Services.AddRazorPages();
+builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<MeterService>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Error");
-}
-
+app.UseExceptionHandler("/Error");
 app.UseRouting();
-
-app.UseAuthorization();
-
 app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+app.MapRazorPages().WithStaticAssets();
 
 app.Run();
