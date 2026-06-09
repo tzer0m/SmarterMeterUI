@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SmarterMeterUI.Models;
 using SmarterMeterUI.Services;
@@ -32,8 +33,11 @@ public class IndexModel(MeterService meterService, IConfiguration config) : Page
     /// <summary>
     /// Fetches readings and calculates tariff on page load.
     /// </summary>
-    public async Task OnGetAsync()
+    public async Task<IActionResult> OnGetAsync()
     {
+        if (HttpContext.Session.GetString("authenticated") != "true")
+            return RedirectToPage("/Login");
+
         UnitRatePence = config.GetValue<decimal>("SmarterMeter:Tariff:UnitRatePence");
         StandingChargePence = config.GetValue<decimal>("SmarterMeter:Tariff:StandingChargePence");
 
@@ -41,6 +45,7 @@ public class IndexModel(MeterService meterService, IConfiguration config) : Page
         Readings = [.. Readings.OrderBy(r => r.CapturedAt)];
 
         LatestReading = Readings.LastOrDefault();
+        return Page();
     }
 
     /// <summary>
