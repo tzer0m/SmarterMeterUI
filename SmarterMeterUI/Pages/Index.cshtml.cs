@@ -31,32 +31,59 @@ public class IndexModel(MeterService meterService, IConfiguration config) : Page
     public decimal StandingChargePence { get; set; }
 
     /// <summary>
-    /// Fetches readings and calculates tariff on page load.
+    /// All configured tariff periods, loaded from appsettings.json.
     /// </summary>
+    public List<Tariff> Tariffs { get; set; } = [];
+
     public async Task<IActionResult> OnGetAsync()
     {
         if (HttpContext.Session.GetString("authenticated") != "true")
             return RedirectToPage("/Login");
 
-        UnitRatePence = config.GetValue<decimal>("SmarterMeter:Tariff:UnitRatePence");
-        StandingChargePence = config.GetValue<decimal>("SmarterMeter:Tariff:StandingChargePence");
+        // Load all tariff periods from configuration
+        Tariffs = config.GetSection("SmarterMeter:Tariffs").Get<List<Tariff>>() ?? [];
 
         Readings = await meterService.GetReadingsAsync(5000);
         Readings = [.. Readings.OrderBy(r => r.CapturedAt)];
 
         LatestReading = Readings.LastOrDefault();
+
         return Page();
     }
 
     /// <summary>
-    /// Calculates the cost in pounds for a given kWh consumption.
+    /// Calculates the total cost in pounds for a set of readings, splitting by tariff
+    /// period so a provider switch mid-range is costed correctly on each side.
     /// </summary>
-    /// <param name="kwh">Energy consumed in kWh.</param>
-    /// <param name="days">Number of days to include standing charge for.</param>
-    public decimal CalculateCost(decimal kwh, int days = 1)
+    /// <param name="readings">The readings to calculate cost for, ordered by CapturedAt.</param>
+    /// <param name="rangeStart">The first calendar day the range covers (inclusive).</param>
+    /// <param name="rangeEnd">The last calendar day the range covers (inclusive).</param>
+    public decimal CalculateCostForRange(List<MeterReading> readings, DateTime rangeStart, DateTime rangeEnd)
     {
-        decimal unitCost = kwh * UnitRatePence;
-        decimal standingCost = StandingChargePence * days;
-        return Math.Round((unitCost + standingCost) / 100, 2);
+        if (readings.Count < 2) return 0;
+
+        decimal totalCost = 0;
+
+        foreach (Tariff tariff in Tariffs)
+        {
+            // Clip the tariff's date range to the requested range
+            DateTime periodStart = rangeStart.Date > tariff.StartDate.Date ? rangeStart.Date : tariff.StartDate.Date;
+            DateTime periodEnd = rangeEnd.Date < tariff.EndDate.Date ? rangeEnd.Date : tariff.EndDate.Date;
+
+            if (periodStart > periodEnd) continue;
+
+            // Days this tariff actually covers within the requested range, inclusive
+            int days = (periodEnd - periodStart).Days + 1;
+
+            // Readings that fall within this clipped period
+            List<MeterReading> periodReadings = [.. readings.Where(r =>
+            r.CapturedAt.Date >= periodStart && r.CapturedAt.Date <= periodEnd)];
+
+            decimal usage = periodReadings.Count >= 2 ? periodReadings.Last().Value - periodReadings.First().Value : 0;
+
+            totalCost += (usage * tariff.UnitRatePence + days * tariff.StandingChargePence) / 100;
+        }
+
+        return Math.Round(totalCost, 2);
     }
 }
