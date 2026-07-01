@@ -41,4 +41,19 @@ public class MeterService(HttpClient httpClient, IConfiguration config)
         string json = await response.Content.ReadAsStringAsync();
         return JsonSerializer.Deserialize<List<MeterReading>>(json, JsonOptions) ?? [];
     }
+
+    /// <summary>
+    /// Fetches the configured tariff periods from the API.
+    /// </summary>
+    public async Task<List<Tariff>> GetTariffsAsync()
+    {
+        using HttpRequestMessage request = new(HttpMethod.Get, $"{ApiBaseUrl}/smartermeter/tariffs");
+        request.Headers.Add("X-API-Key", ApiKey);
+
+        HttpResponseMessage response = await httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        string json = await response.Content.ReadAsStringAsync();
+        return JsonSerializer.Deserialize<List<Tariff>>(json, JsonOptions) ?? [];
+    }
 }

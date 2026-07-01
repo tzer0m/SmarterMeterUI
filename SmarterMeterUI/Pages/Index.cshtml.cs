@@ -35,19 +35,21 @@ public class IndexModel(MeterService meterService, IConfiguration config) : Page
     /// </summary>
     public List<Tariff> Tariffs { get; set; } = [];
 
+    /// <summary>
+    /// Loads tariff periods, meter readings, and the latest reading for display. Redirects to the login page if the session is not authenticated.
+    /// </summary>
+    /// <returns>The page result, or a redirect to the login page if unauthenticated.</returns>
     public async Task<IActionResult> OnGetAsync()
     {
+        // Check if authenticated session exists
         if (HttpContext.Session.GetString("authenticated") != "true")
             return RedirectToPage("/Login");
 
-        // Load all tariff periods from configuration
-        Tariffs = config.GetSection("SmarterMeter:Tariffs").Get<List<Tariff>>() ?? [];
-
+        // Load all tariff information and readings
+        Tariffs = await meterService.GetTariffsAsync();
         Readings = await meterService.GetReadingsAsync(5000);
         Readings = [.. Readings.OrderBy(r => r.CapturedAt)];
-
         LatestReading = Readings.LastOrDefault();
-
         return Page();
     }
 
