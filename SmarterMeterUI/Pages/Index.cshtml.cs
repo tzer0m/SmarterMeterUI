@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SmarterMeterUI.Models;
 using SmarterMeterUI.Services;
@@ -9,6 +9,7 @@ namespace SmarterMeterUI.Pages;
 /// Index page model — fetches meter readings and summary data from the API.
 /// </summary>
 /// <param name="meterService">The meter service used to fetch data.</param>
+[Authorize]
 public class IndexModel(MeterService meterService) : PageModel
 {
     /// <summary>
@@ -27,19 +28,13 @@ public class IndexModel(MeterService meterService) : PageModel
     public MeterSummary Summary { get; set; } = new();
 
     /// <summary>
-    /// Loads the meter summary and readings for display. Redirects to the login page if the session is not authenticated.
+    /// Loads the meter summary and readings for display.
     /// </summary>
-    /// <returns>The page result, or a redirect to the login page if unauthenticated.</returns>
-    public async Task<IActionResult> OnGetAsync()
+    public async Task OnGetAsync()
     {
-        if (HttpContext.Session.GetString("authenticated") != "true")
-            return RedirectToPage("/Login");
-
         Summary = await meterService.GetSummaryAsync();
         Readings = await meterService.GetReadingsAsync(5000);
         Readings = [.. Readings.OrderBy(r => r.CapturedAt)];
         LatestReading = Readings.LastOrDefault();
-
-        return Page();
     }
 }
