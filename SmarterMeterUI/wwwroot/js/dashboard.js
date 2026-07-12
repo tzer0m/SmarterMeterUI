@@ -2,6 +2,7 @@
 let allValues = [];
 let cumulativeChart;
 let consumptionChart;
+let gapChart;
 
 function initCharts(labels, values) {
     allLabels = labels;
@@ -35,7 +36,50 @@ function initCharts(labels, values) {
         }
     });
 
+    initGapChart();
+
     filterCharts('month', document.querySelector('#rangeButtons .active'));
+}
+
+function initGapChart() {
+    // Static - only ever looks at the last 200 hours, unaffected by the range buttons
+    const now = new Date();
+    const cutoff = new Date(now - 200 * 60 * 60 * 1000);
+
+    const windowed = allLabels
+        .map((l, i) => ({ l, v: allValues[i] }))
+        .filter(d => new Date(d.l) >= cutoff);
+
+    const gapLabels = [];
+    const gapValues = [];
+    const gapColors = [];
+
+    for (let i = 1; i < windowed.length; i++) {
+        const prev = new Date(windowed[i - 1].l);
+        const curr = new Date(windowed[i].l);
+        const gapHours = +((curr - prev) / (1000 * 60 * 60)).toFixed(2);
+
+        gapLabels.push(curr.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' + curr.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+        gapValues.push(gapHours);
+        gapColors.push(gapHours > 5 ? 'rgba(220, 53, 69, 0.7)' : gapHours > 3 ? 'rgba(255, 193, 7, 0.7)' : 'rgba(25, 135, 84, 0.7)');
+    }
+
+    gapChart = new Chart(document.getElementById('gapChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: gapLabels, datasets: [{ label: 'Gap (hours)', data: gapValues, backgroundColor: gapColors, borderRadius: 2, barPercentage: 0.9, categoryPercentage: 0.95 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ctx.parsed.y.toFixed(2) + 'h since previous reading' } }
+            },
+            scales: {
+                x: { ticks: { autoSkip: true, maxTicksLimit: 10 } },
+                y: { title: { display: true, text: 'Hours since last reading' } }
+            }
+        }
+    });
 }
 
 function filterCharts(range, btn) {
@@ -182,7 +226,6 @@ function filterCharts(range, btn) {
         if (range === 'year') {
             const weeks = {};
 
-            // Pre-populate 52 weeks using Sunday-anchored week starts
             for (let i = 51; i >= 0; i--) {
                 const d = new Date(now - i * 7 * 24 * 60 * 60 * 1000);
                 const weekStart = new Date(d);
