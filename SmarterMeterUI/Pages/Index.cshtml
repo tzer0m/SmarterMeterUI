@@ -73,7 +73,7 @@
                     <div class="card-body">
                         <div class="text-muted small">Reading Success</div>
                         <div class="fs-4 fw-bold">@Model.Summary.SuccessRate.ToString("F0")%</div>
-                        <div class="text-muted small">Last 200h</div>
+                        <div class="text-muted small">Last @(100 * Model.Summary.CaptureIntervalHours)h</div>
                     </div>
                 </div>
             </div>
@@ -135,6 +135,7 @@
     <script>
         var chartLabels = @Html.Raw(labels);
         var chartValues = @Html.Raw(values);
-        initCharts(chartLabels, chartValues);
+        var captureIntervalHours = @Model.Summary.CaptureIntervalHours;
+        initCharts(chartLabels, chartValues, captureIntervalHours);
     </script>
 }
