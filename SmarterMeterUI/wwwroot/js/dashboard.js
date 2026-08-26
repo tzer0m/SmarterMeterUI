@@ -4,9 +4,10 @@ let cumulativeChart;
 let consumptionChart;
 let gapChart;
 
-function initCharts(labels, values) {
+function initCharts(labels, values, intervalHours) {
     allLabels = labels;
     allValues = values;
+    captureIntervalHours = intervalHours;
 
     cumulativeChart = new Chart(document.getElementById('cumulativeChart').getContext('2d'), {
         type: 'line',
@@ -42,9 +43,14 @@ function initCharts(labels, values) {
 }
 
 function initGapChart() {
-    // Static - only ever looks at the last 200 hours, unaffected by the range buttons
+    // Static - only ever looks at the last (100 * captureIntervalHours) hours, unaffected by the range buttons
     const now = new Date();
-    const cutoff = new Date(now - 200 * 60 * 60 * 1000);
+    const lookbackHours = 100 * captureIntervalHours;
+    const cutoff = new Date(now - lookbackHours * 60 * 60 * 1000);
+
+    // Thresholds scale with the capture interval - a gap of 2.5x the expected interval is red, 1.5x is amber
+    const redThresholdHours = 2.5 * captureIntervalHours;
+    const amberThresholdHours = 1.5 * captureIntervalHours;
 
     const windowed = allLabels
         .map((l, i) => ({ l, v: allValues[i] }))
@@ -61,7 +67,7 @@ function initGapChart() {
 
         gapLabels.push(curr.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' + curr.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
         gapValues.push(gapHours);
-        gapColors.push(gapHours > 5 ? 'rgba(220, 53, 69, 0.7)' : gapHours > 3 ? 'rgba(255, 193, 7, 0.7)' : 'rgba(25, 135, 84, 0.7)');
+        gapColors.push(gapHours > redThresholdHours ? 'rgba(220, 53, 69, 0.7)' : gapHours > amberThresholdHours ? 'rgba(255, 193, 7, 0.7)' : 'rgba(25, 135, 84, 0.7)');
     }
 
     gapChart = new Chart(document.getElementById('gapChart').getContext('2d'), {
