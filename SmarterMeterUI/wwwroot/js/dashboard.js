@@ -1,5 +1,6 @@
 ﻿let allLabels = [];
 let allValues = [];
+let captureIntervalHours;
 let cumulativeChart;
 let consumptionChart;
 let gapChart;
