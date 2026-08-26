@@ -135,6 +135,6 @@
     <script>
         var chartLabels = @Html.Raw(labels);
         var chartValues = @Html.Raw(values);
-        initCharts(chartLabels, chartValues, captureIntervalHours);
+        initCharts(chartLabels, chartValues, @Model.Summary.CaptureIntervalHours);
     </script>
 }
